@@ -934,6 +934,18 @@ function toggleMobileMenu() {
 function closeMobileMenu() {
   document.getElementById('mobile-menu')?.classList.remove('open');
 }
+// Close mobile menu on scroll
+window.addEventListener('scroll', closeMobileMenu, { passive: true });
+// Close mobile menu on click outside
+document.addEventListener('click', function(e) {
+  const menu = document.getElementById('mobile-menu');
+  const btn = document.querySelector('.hamburger-btn');
+  if(menu && menu.classList.contains('open')) {
+    if(!menu.contains(e.target) && e.target !== btn && !btn?.contains(e.target)) {
+      closeMobileMenu();
+    }
+  }
+});
 
 // =========================================================
 // SHORTCUTS MODAL
