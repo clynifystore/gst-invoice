@@ -110,7 +110,17 @@
     .inv-wrap { padding: 16px; }
     @page { margin: 1cm; }
   }
-  .check-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--gray-50); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; }
+  .lock-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f0f2f5; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+  .lock-box { background: white; border: 1px solid var(--border); border-radius: 16px; padding: 40px 36px; max-width: 380px; width: 90%; box-shadow: var(--shadow-md); text-align: center; }
+  .lock-logo { font-size: 48px; margin-bottom: 12px; }
+  .lock-title { font-size: 20px; font-weight: 700; color: var(--gray-800); margin-bottom: 4px; }
+  .lock-subtitle { font-size: 13px; color: var(--gray-400); margin-bottom: 24px; }
+  .lock-input { width: 100%; padding: 12px 14px; border: 2px solid var(--border); border-radius: var(--radius); font-size: 16px; font-family: 'DM Sans', sans-serif; text-align: center; letter-spacing: 0.1em; margin-bottom: 12px; transition: border 0.15s; }
+  .lock-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,86,219,0.1); }
+  .lock-btn { width: 100%; padding: 12px; background: var(--blue); color: white; border: none; border-radius: var(--radius); font-size: 15px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background 0.15s; }
+  .lock-btn:hover { background: var(--blue-dark); }
+  .lock-error { color: var(--red); font-size: 13px; margin-top: 8px; display: none; }
+  .lock-hint { font-size: 11px; color: var(--gray-400); margin-top: 16px; }
   .check-row input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--blue); }
   .check-row label { font-size: 13px; font-weight: 500; cursor: pointer; }
   .freight-gst-select { padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: 'DM Sans', sans-serif; }
@@ -118,6 +128,36 @@
 </style>
 </head>
 <body>
+
+<!-- LOCK SCREEN -->
+<div class="lock-screen" id="lock-screen">
+  <div class="lock-box">
+    <div class="lock-logo">🔐</div>
+    <div class="lock-title">GST Invoice</div>
+    <div class="lock-subtitle">Apni team ka password daalo</div>
+    <input class="lock-input" type="password" id="lock-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkPassword()" autofocus />
+    <button class="lock-btn" onclick="checkPassword()">🔓 Login</button>
+    <div class="lock-error" id="lock-error">❌ Galat password! Dobara try karo.</div>
+    <div class="lock-hint">Pehli baar? Default password: <strong>invoice123</strong><br/>Baad mein settings mein badal sakte ho.</div>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL -->
+<div class="modal-bg" id="pwd-modal">
+  <div class="modal-box" style="max-width:400px;">
+    <div class="modal-header">
+      <span class="modal-header-title">🔑 Password Badlo</span>
+      <button class="btn btn-outline" onclick="g('pwd-modal').style.display='none'">✕ Close</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:12px;">
+      <div class="field"><label>Purana Password</label><input type="password" id="pwd-old" placeholder="Current password" /></div>
+      <div class="field"><label>Naya Password</label><input type="password" id="pwd-new" placeholder="New password" /></div>
+      <div class="field"><label>Confirm Password</label><input type="password" id="pwd-confirm" placeholder="Repeat new password" /></div>
+      <button class="btn btn-primary" onclick="changePassword()">✅ Password Badlo</button>
+      <div id="pwd-msg" style="font-size:13px;display:none;padding:8px;border-radius:6px;"></div>
+    </div>
+  </div>
+</div>
 
 <!-- TOP BAR -->
 <div class="topbar">
@@ -131,6 +171,7 @@
     <button class="btn btn-outline btn-sm" onclick="saveInvoice()">💾 Save</button>
     <button class="btn btn-outline btn-sm" onclick="exportCSV()">📊 CSV Export</button>
     <button class="btn btn-outline btn-sm" onclick="openTemplates()">🎨 Templates</button>
+    <button class="btn btn-outline btn-sm" onclick="g('pwd-modal').style.display='block'">🔑 Password</button>
     <button class="btn btn-green btn-sm" onclick="generatePreview()">👁 Preview</button>
     <button class="btn btn-primary btn-sm" onclick="printInvoice()">🖨 Print/PDF</button>
     <button class="btn btn-orange btn-sm" onclick="shareWhatsApp()">💬 WhatsApp</button>
@@ -584,6 +625,60 @@ async function deleteInvoiceCloud(inv_no, inv_date) {
 }
 
 // =========================================================
+// PASSWORD LOCK
+// =========================================================
+const DEFAULT_PASSWORD = 'invoice123';
+
+function getStoredPassword() {
+  return localStorage.getItem('app_password') || DEFAULT_PASSWORD;
+}
+
+function checkPassword() {
+  const input = document.getElementById('lock-input').value;
+  const err = document.getElementById('lock-error');
+  if(input === getStoredPassword()) {
+    document.getElementById('lock-screen').style.display = 'none';
+    sessionStorage.setItem('unlocked', '1');
+    err.style.display = 'none';
+  } else {
+    err.style.display = 'block';
+    document.getElementById('lock-input').value = '';
+    document.getElementById('lock-input').focus();
+    document.getElementById('lock-input').style.border = '2px solid var(--red)';
+    setTimeout(() => { document.getElementById('lock-input').style.border = ''; }, 1000);
+  }
+}
+
+function changePassword() {
+  const oldPwd = g('pwd-old').value;
+  const newPwd = g('pwd-new').value;
+  const confirm = g('pwd-confirm').value;
+  const msg = g('pwd-msg');
+  msg.style.display = 'block';
+  if(oldPwd !== getStoredPassword()) {
+    msg.style.background = '#fdecea'; msg.style.color = '#c0392b';
+    msg.textContent = '❌ Purana password galat hai!'; return;
+  }
+  if(newPwd.length < 4) {
+    msg.style.background = '#fdecea'; msg.style.color = '#c0392b';
+    msg.textContent = '❌ Password kam se kam 4 characters ka hona chahiye!'; return;
+  }
+  if(newPwd !== confirm) {
+    msg.style.background = '#fdecea'; msg.style.color = '#c0392b';
+    msg.textContent = '❌ Naya password match nahi kar raha!'; return;
+  }
+  localStorage.setItem('app_password', newPwd);
+  msg.style.background = '#e6f4f0'; msg.style.color = '#0f7956';
+  msg.textContent = '✅ Password badal gaya! Team ko naya password batao.';
+  g('pwd-old').value = ''; g('pwd-new').value = ''; g('pwd-confirm').value = '';
+}
+
+// Check if already unlocked this session
+if(sessionStorage.getItem('unlocked') === '1') {
+  document.getElementById('lock-screen').style.display = 'none';
+}
+
+// =========================================================
 // STATE
 // =========================================================
 let items = [];
@@ -781,20 +876,20 @@ function init() {
   // Auto-set invoice number
   const nextNo = getNextInvoiceNo();
   document.getElementById('inv_no').value = nextNo || ('CS-' + new Date().getFullYear() + '-001');
-  // Load seller
+  // Load seller from localStorage first (instant)
   const saved = localStorage.getItem('gst_seller');
-  if(saved) {
-    const d = JSON.parse(saved);
-    ['s_name','s_gstin','s_addr','s_phone','s_email','bank_name','bank_acc','bank_ifsc','bank_holder','upi_id'].forEach(k => { if(d[k] && document.getElementById(k)) document.getElementById(k).value = d[k]; });
-    if(d.s_state) document.getElementById('s_state').value = d.s_state;
-    if(d.logo) { logoDataURL=d.logo; renderLogoPreview(); }
-    if(d.sig) { sigDataURL=d.sig; renderSigPreview(); }
-    if(d.brandColor) { brandColor=d.brandColor; document.getElementById('brand_color').value=d.brandColor; applyBrandColor(d.brandColor); }
-    if(d.template) { currentTemplate=d.template; }
-  }
+  if(saved) { applySellerData(JSON.parse(saved)); }
   addItem();
   updateGST();
   initSupabase();
+  // Then try cloud (may override local with latest)
+  setTimeout(async () => {
+    const cloudSeller = await loadSellerCloud();
+    if(cloudSeller) {
+      applySellerData(cloudSeller);
+      localStorage.setItem('gst_seller', JSON.stringify(cloudSeller));
+    }
+  }, 1000);
 }
 
 // =========================================================
@@ -1278,6 +1373,35 @@ function exportCSV() {
 function saveSeller() {
   const sellerData={s_name:val('s_name'),s_gstin:val('s_gstin'),s_addr:val('s_addr'),s_phone:val('s_phone'),s_email:val('s_email'),s_state:g('s_state')?.value,bank_name:val('bank_name'),bank_acc:val('bank_acc'),bank_ifsc:val('bank_ifsc'),bank_holder:val('bank_holder'),upi_id:val('upi_id'),logo:logoDataURL,sig:sigDataURL,brandColor,template:currentTemplate};
   localStorage.setItem('gst_seller',JSON.stringify(sellerData));
+  // Debounced cloud save
+  clearTimeout(window._sellerSaveTimer);
+  window._sellerSaveTimer = setTimeout(() => saveSellerCloud(sellerData), 1500);
+}
+
+async function saveSellerCloud(sellerData) {
+  if(!supabaseClient) return;
+  try {
+    await supabaseClient.from('seller_profile').upsert({ id: 1, data: JSON.stringify(sellerData), updated_at: new Date().toISOString() }, { onConflict: 'id' });
+  } catch(e) { /* silent fail */ }
+}
+
+async function loadSellerCloud() {
+  if(!supabaseClient) return null;
+  try {
+    const { data, error } = await supabaseClient.from('seller_profile').select('data').eq('id', 1).single();
+    if(error || !data) return null;
+    return JSON.parse(data.data);
+  } catch(e) { return null; }
+}
+
+function applySellerData(d) {
+  if(!d) return;
+  ['s_name','s_gstin','s_addr','s_phone','s_email','bank_name','bank_acc','bank_ifsc','bank_holder','upi_id'].forEach(k => { if(d[k] && document.getElementById(k)) document.getElementById(k).value = d[k]; });
+  if(d.s_state) document.getElementById('s_state').value = d.s_state;
+  if(d.logo) { logoDataURL=d.logo; renderLogoPreview(); }
+  if(d.sig) { sigDataURL=d.sig; renderSigPreview(); }
+  if(d.brandColor) { brandColor=d.brandColor; document.getElementById('brand_color').value=d.brandColor; applyBrandColor(d.brandColor); }
+  if(d.template) { currentTemplate=d.template; }
 }
 
 // =========================================================
