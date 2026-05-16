@@ -1377,6 +1377,12 @@ function buildInvoiceHTML() {
   const grand=doRound?Math.round(rawGrand):rawGrand;
 
   const colSpanSubtotal=hasDiscount?(noGst?5:6):(noGst?4:5);
+  // Total columns: # + desc + qty + rate + [disc] + [gst%] + [gstAmt] + amount + total
+  // noGst: # desc qty rate [disc] amount total = 5 or 6(disc)
+  // withGst: # desc qty rate [disc] gst% gstAmt amount total = 7 or 8(disc)
+  // colSpanSubtotal = total cols - cols after SUBTOTAL label
+  // noGst: subtotal shows amount+total = 2 cols after, so span = totalCols-2
+  // withGst: subtotal shows gstTotal+amount+total = 3 cols after, so span = totalCols-3
   const discHeader=hasDiscount?`<th style="padding:8px;text-align:center;width:50px;">Disc</th>`:'';
   const gstHeaders=noGst?'':`<th style="padding:8px;text-align:center;width:50px;">GST</th><th style="padding:8px;text-align:right;width:75px;">GST Amt</th>`;
   const noGstBadge=noGst?`<div style="display:inline-block;padding:3px 10px;background:#fef3c7;color:#92400e;border-radius:99px;font-size:10px;font-weight:600;margin-left:8px;">Without GST</div>`:'';
@@ -1491,8 +1497,7 @@ function buildInvoiceHTML() {
         <tr style="background:#f3f4f6;">
           <td colspan="${colSpanSubtotal}" style="padding:7px 8px;text-align:right;font-weight:500;font-size:11px;color:#6b7280;">SUBTOTAL</td>
           ${noGst?'':`<td style="padding:7px 8px;text-align:right;font-weight:600;">${rupee(subtotal)}</td><td style="padding:7px 8px;text-align:right;font-weight:600;">${rupee(totalGst)}</td>`}
-          <td style="padding:7px 8px;text-align:right;font-weight:600;">${rupee(subtotal)}</td>
-          <td style="padding:7px 8px;text-align:right;font-weight:700;color:${brandColor};">${rupee(subtotal+(noGst?0:totalGst))}</td>
+          <td style="padding:7px 8px;text-align:right;font-weight:700;color:${brandColor};" colspan="2">${rupee(subtotal+(noGst?0:totalGst))}</td>
         </tr>
         ${invDiscRow}
       </tfoot>
